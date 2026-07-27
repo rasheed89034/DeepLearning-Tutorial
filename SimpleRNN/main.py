@@ -18,9 +18,14 @@ def load_imdb_word_index():
     word_index = imdb.get_word_index()
     return word_index
 
+import os
 @st.cache_resource
 def load_keras_model():
-    return load_model('simple_rnn_imdb.h5')
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(current_dir, 'simple_rnn_imdb.h5')
+    
+    return load_model(model_path)
 
 
 word_index = load_imdb_word_index()
