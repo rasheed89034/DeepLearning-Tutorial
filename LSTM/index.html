@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shakespeare Next Word Predictor</title>
+    <!-- Use Tailwind CSS for modern styling without writing custom CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Deep space dark background */
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(90deg, #38bdf8, #818cf8);
+        }
+        .glow-input:focus {
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+            border-color: #38bdf8;
+        }
+        
+        /* Spinner Animation */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #38bdf8;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-12 pb-12 px-4 sm:px-6 lg:px-8">
+
+    <!-- Header Section -->
+    <header class="text-center mb-12 w-full max-w-4xl">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">
+            Next Word Predictor <br/>
+            <span class="text-gradient text-2xl md:text-3xl">Trained on Shakespeare's Hamlet</span>
+        </h1>
+        <p class="text-slate-400 text-lg">Type a phrase and let the LSTM model complete your sentence in Old English style.</p>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="w-full max-w-3xl glass-panel rounded-2xl p-6 md:p-10 mb-12 relative overflow-hidden">
+        <!-- Decorative element -->
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+
+        <div class="relative z-10">
+            <!-- Input Area -->
+            <div class="mb-6">
+                <label for="inputText" class="block text-sm font-medium text-slate-300 mb-2">Start your sentence here...</label>
+                <div class="relative">
+                    <textarea id="inputText" rows="3" 
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 glow-input transition-all duration-300 outline-none resize-none"
+                        placeholder="To be or not to..."></textarea>
+                </div>
+            </div>
+
+            <!-- Controls Area -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
+                <div class="flex items-center w-full sm:w-auto">
+                    <label for="numWords" class="text-sm text-slate-400 mr-3 whitespace-nowrap">Predict next:</label>
+                    <select id="numWords" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 outline-none focus:border-sky-400 w-full sm:w-auto">
+                        <option value="1">1 word</option>
+                        <option value="2">2 words</option>
+                        <option value="3" selected>3 words</option>
+                        <option value="5">5 words</option>
+                        <option value="10">10 words</option>
+                    </select>
+                </div>
+                
+                <button id="predictBtn" onclick="makePrediction()" 
+                    class="w-full sm:w-auto bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
+                    <span id="btnText"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Predict</span>
+                    <span id="btnLoader" class="loader hidden"></span>
+                </button>
+            </div>
+
+            <!-- Result Area -->
+            <div id="resultContainer" class="hidden">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Prediction Result</h3>
+                <div class="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 min-h-[100px] flex items-center shadow-inner">
+                    <p class="text-xl leading-relaxed w-full">
+                        <span id="originalText" class="text-slate-300"></span>
+                        <span id="predictedText" class="text-sky-400 font-semibold drop-shadow-md"></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMsg" class="hidden mt-4 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg p-3 text-sm flex items-center">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                <span id="errorText">API is not reachable. Ensure FastAPI is running on port 8000.</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Details Section (About You & Project) -->
+    <section class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Project Details Card -->
+        <div class="glass-panel rounded-2xl p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 mr-3">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <h2 class="text-xl font-semibold">About The Project</h2>
+            </div>
+            <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                This Natural Language Processing (NLP) model is built using TensorFlow and Keras. It utilizes an advanced Long Short-Term Memory (LSTM) architecture to understand sequence context.
+            </p>
+            <ul class="text-sm text-slate-300 space-y-2">
+                <li><i class="fa-solid fa-check text-sky-400 mr-2"></i> <strong>Dataset:</strong> Gutenberg Corpus (Hamlet)</li>
+                <li><i class="fa-solid fa-check text-sky-400 mr-2"></i> <strong>Embedding:</strong> 256 dimensions</li>
+                <li><i class="fa-solid fa-check text-sky-400 mr-2"></i> <strong>Architecture:</strong> Stacked LSTM with Dropout</li>
+                <li><i class="fa-solid fa-check text-sky-400 mr-2"></i> <strong>Backend:</strong> FastAPI (Python)</li>
+            </ul>
+        </div>
+
+        <!-- Developer Details Card -->
+        <div class="glass-panel rounded-2xl p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-10 h-10 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400 mr-3">
+                    <i class="fa-solid fa-user-astronaut"></i>
+                </div>
+                <h2 class="text-xl font-semibold">Developer Details</h2>
+            </div>
+            <!-- YOU CAN EDIT THESE DETAILS -->
+            <h3 class="text-lg font-medium text-white mb-1">Rasheed Ahmad</h3>
+            <p class="text-sky-400 text-sm mb-4">ML Developer</p>
+            
+            <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                Passionate about Deep Learning, Neural Networks, and creating intelligent web applications. Building the bridge between complex ML models and user-friendly interfaces.
+            </p>
+            
+            <div class="flex space-x-4">
+                <a href="#" class="text-slate-400 hover:text-white transition-colors"><i class="fa-brands fa-github text-xl"></i></a>
+                <a href="#" class="text-slate-400 hover:text-[#0a66c2] transition-colors"><i class="fa-brands fa-linkedin text-xl"></i></a>
+                <a href="#" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-envelope text-xl"></i></a>
+            </div>
+        </div>
+
+    </section>
+
+    <footer class="mt-16 text-slate-500 text-sm">
+        <p>&copy; 2026 AI Project. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Set your FastAPI backend URL here
+        const API_URL = "http://127.0.0.1:8000/predict";
+
+        async function makePrediction() {
+            const inputEl = document.getElementById('inputText');
+            const wordsEl = document.getElementById('numWords');
+            const resultContainer = document.getElementById('resultContainer');
+            const originalTextEl = document.getElementById('originalText');
+            const predictedTextEl = document.getElementById('predictedText');
+            const errorMsg = document.getElementById('errorMsg');
+            const errorText = document.getElementById('errorText');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+
+            const text = inputEl.value.trim();
+            const numWords = parseInt(wordsEl.value);
+
+            if (!text) {
+                inputEl.focus();
+                return;
+            }
+
+            // UI State: Loading
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            errorMsg.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        num_words: numWords
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Update UI with results
+                originalTextEl.textContent = text + " ";
+                predictedTextEl.textContent = data.predicted_words;
+                resultContainer.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error("Error:", error);
+                errorText.textContent = "Failed to connect to the prediction server. Ensure FastAPI is running on port 8000.";
+                errorMsg.classList.remove('hidden');
+            } finally {
+                // UI State: Reset
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
